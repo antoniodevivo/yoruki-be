@@ -1,8 +1,9 @@
 import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { MagicLoginStrategy } from './magiclogin.strategy';
-import { PasswordlessLoginDto } from './passwordless-login.dto';
-import { AuthGuard } from '@nestjs/passport';
+import { MagicLoginStrategy } from './guards/magiclogin.strategy';
+import { PasswordlessLoginDto } from '../dto/passwordless-login.dto';
+import { GoogleOauthGuard } from './guards/google-oauth.guard';
+import { MagicLoginGuard } from './guards/magiclogin-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -11,15 +12,44 @@ export class AuthController {
     private authStrategy: MagicLoginStrategy
   ) { }
 
+
   @Post("login")
   login(@Req() req, @Res() res, @Body() body: PasswordlessLoginDto) {
     this.authService.validateUser(body.destination)
     return this.authStrategy.send(req, res);
   }
 
-  @UseGuards(AuthGuard("magicLogin"))
+
+  @UseGuards(MagicLoginGuard)
   @Get("login/magic-link-interceptor")
-  loginLinkInterceptor(@Req() req) {
-    return this.authService.generateJWT(req.user)
+  async loginLinkInterceptor(@Req() req, @Res() res) {
+    try {
+      const jwt = await this.authService.generateJWT(req.user);
+      res.cookie('YORUKI_JWT', jwt.access_token, {
+        httpOnly: true,
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000
+      });
+      res.redirect(`${process.env.FRONTEND_URL}/`);
+    } catch (err) {
+      res.status(500).send({ success: false, message: err.message });
+    }
+  }
+
+
+  @Get('google/callback')
+  @UseGuards(GoogleOauthGuard)
+  async googleAuthCallback(@Req() req, @Res() res) {
+    try {
+      const jwt = await this.authService.generateJWT(req.user);
+      res.cookie('YORUKI_JWT', jwt.access_token, {
+        httpOnly: true,
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000
+      });
+      res.redirect(`${process.env.FRONTEND_URL}/`);
+    } catch (err) {
+      res.status(500).send({ success: false, message: err.message });
+    }
   }
 }

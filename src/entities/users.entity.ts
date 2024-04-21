@@ -37,11 +37,6 @@ export class Users extends ChangeTime {
 
   @ManyToOne((type) => SystemRoles, (systemRole) => systemRole.relatedUsers, { nullable: true })
   systemRole: SystemRoles;
-
-  @BeforeInsert()
-  async hashPasword() {
-    this.password = await bcrypt.hash(this.password, process.env.BCRYPT_SALT);
-  }
 }
 
 //let regex = /^[a-z0-9_.]+$/;
