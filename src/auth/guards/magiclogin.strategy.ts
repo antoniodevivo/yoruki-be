@@ -1,33 +1,42 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { PassportStrategy } from "@nestjs/passport";
-import Strategy from "passport-magic-login"
-import { AuthService } from "../auth.service";
+import { Strategy } from 'passport-custom';
+import { PassportStrategy } from '@nestjs/passport';
+import { Injectable, Logger } from '@nestjs/common';
+import { AuthService } from '../auth.service';
 
 @Injectable()
-export class MagicLoginStrategy extends PassportStrategy(Strategy) {
+export class MagicLoginStrategy extends PassportStrategy(Strategy, "magicLogin") {
     private readonly logger = new Logger(MagicLoginStrategy.name);
 
-    constructor(private authService: AuthService) {
-        super({
-            secret: process.env.PASSPORT_MAGIC_LINK_SECRET,
-            jwtOptions: {
-                expiresIn: "30m"
-            },
-            callbackUrl: `${process.env.SERVER_URL}/auth/login/magic-link-interceptor`,
-            sendMagicLink: async (destination, href) => {
-                // TODO: send email
-                const message = `sending email to ${destination} with link ${href}`
-                this.logger.debug(message)
-                return { message };
-            },
-            verify: async(payload, callback) => {
-                callback(null, this.validate(payload))
-            }
-        })
+    private readonly callbackUrl = `${process.env.SERVER_URL}/auth/login/magic-link-interceptor`
+
+    private readonly jwtOptions = {
+        expiresIn: "30m"
     }
 
-    validate(payload: { destination: string }) {
-        const user = this.authService.validateUser(payload.destination)
-        return user;
+    constructor(private authService: AuthService) {
+        super();
+    }
+
+    generateMagicLink(payload: any) {
+        const jwt = this.authService.generateJWT({
+            payload: payload,
+            expiresIn: this.jwtOptions.expiresIn
+        })
+        return `${this.callbackUrl}?token=${jwt.access_token}`
+    }
+
+    sendMagicLink(destination: string, payload: any) {
+        const magicLink = this.generateMagicLink(payload)
+
+        const message = `sending email to ${destination} with link ${magicLink}`
+        this.logger.debug(message)
+        return true;
+    }
+
+    async validate(req) {
+        console.log(req.query.token)
+        return {
+            email: "mambo@gmail.com"
+        };
     }
 }

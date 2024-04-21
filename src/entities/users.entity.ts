@@ -1,18 +1,13 @@
 import {
-  BeforeInsert,
   Column,
   Entity,
   PrimaryGeneratedColumn,
   OneToMany,
-  JoinTable,
-  ManyToMany,
   ManyToOne,
 } from 'typeorm';
-import * as bcrypt from 'bcrypt';
-import { ChatMessages } from './chat-messages.entity';
 import { ChangeTime } from './change-time.entity';
-import { ChatRoomsRoles } from './chat-rooms-roles.entity';
 import { SystemRoles } from './system-roles.entity';
+import { UsersRegistrations } from './users-registrations.entity';
 
 @Entity()
 export class Users extends ChangeTime {
@@ -28,15 +23,9 @@ export class Users extends ChangeTime {
   @Column({ type: "varchar", length: 20, nullable: false, unique: true })
   username: string;
 
-  @OneToMany((type) => ChatMessages, (chatMessages) => chatMessages.owner)
-  relatedChatMessages: ChatMessages[];
-
-  @ManyToMany(() => ChatRoomsRoles)
-  @JoinTable()
-  chatRoomsRoles: ChatRoomsRoles[]
+  @OneToMany((ur) => UsersRegistrations, (ur) => ur.owner)
+  registrations: UsersRegistrations[];
 
   @ManyToOne((type) => SystemRoles, (systemRole) => systemRole.relatedUsers, { nullable: true })
   systemRole: SystemRoles;
 }
-
-//let regex = /^[a-z0-9_.]+$/;

@@ -16,13 +16,16 @@ export class AuthController {
   @Post("login")
   login(@Req() req, @Res() res, @Body() body: PasswordlessLoginDto) {
     this.authService.validateUser(body.destination)
-    return this.authStrategy.send(req, res);
+    this.authStrategy.sendMagicLink(body.destination, {});
+    return res.send({ success: true });
   }
 
 
-  @UseGuards(MagicLoginGuard)
   @Get("login/magic-link-interceptor")
+  @UseGuards(MagicLoginGuard)
   async loginLinkInterceptor(@Req() req, @Res() res) {
+    console.log(req)
+    return res.send({ success: true });
     try {
       const jwt = await this.authService.generateJWT(req.user);
       res.cookie('YORUKI_JWT', jwt.access_token, {

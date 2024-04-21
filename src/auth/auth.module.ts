@@ -16,7 +16,7 @@ import { GoogleStrategy } from './guards/google-oauth.strategy';
       useFactory: () => ({
         secret: process.env.JWT_SECRET,
         signOptions: {
-          expiresIn: '30d',
+          expiresIn: process.env.JWT_EXPIRATION,
         },
         global: true,
       }),

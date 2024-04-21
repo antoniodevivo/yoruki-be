@@ -1,5 +1,4 @@
 import {
-    Entity,
     CreateDateColumn,
     UpdateDateColumn,
 } from 'typeorm';

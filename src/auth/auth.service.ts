@@ -1,6 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Users } from 'src/users/users.entity';
 import { UsersService } from 'src/users/users.service';
 
 @Injectable()
@@ -16,13 +15,15 @@ export class AuthService {
         return user;
     }
 
-    generateJWT(user: Users) {
-        const payload = {
-            email: user.email
-        }
-
+    generateJWT({
+        payload, 
+        expiresIn=process.env.JWT_EXPIRATION
+    }) {
         return {
-            access_token: this.jwtService.sign(payload)
+            access_token: this.jwtService.sign({
+                payload, 
+                options: {expiresIn: expiresIn}
+            })
         }
     }
 
