@@ -1,7 +1,8 @@
 import { Strategy } from 'passport-custom';
 import { PassportStrategy } from '@nestjs/passport';
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { AuthService } from '../auth.service';
+import { aesDecrypt } from 'src/utils/crypto';
 
 @Injectable()
 export class MagicLoginStrategy extends PassportStrategy(Strategy, "magicLogin") {
@@ -17,9 +18,9 @@ export class MagicLoginStrategy extends PassportStrategy(Strategy, "magicLogin")
         super();
     }
 
-    generateMagicLink(payload: any) {
+    generateMagicLink(payload: any): string {
         const jwt = this.authService.generateJWT({
-            payload: payload,
+            payload,
             expiresIn: this.jwtOptions.expiresIn
         })
         return `${this.callbackUrl}?token=${jwt.access_token}`
@@ -32,11 +33,47 @@ export class MagicLoginStrategy extends PassportStrategy(Strategy, "magicLogin")
         this.logger.debug(message)
         return true;
     }
+    
+    // Validation functions
+    checkTokenExists(req){
+        if(!req.query.token) 
+            throw new HttpException('Token not found', HttpStatus.BAD_REQUEST);
+    }
 
+    checkJwtIsValid(jwt){
+        let [err, decodedJWT] = this.authService.verifyJWT(jwt)
+
+        if(err)
+            throw new HttpException('Invalid JWT', HttpStatus.BAD_REQUEST);
+
+        return decodedJWT;
+    }
+
+    checkJwtIsNotExpired(decodedJWT){
+        let now = Date.now()
+        var nowInSeconds = Math.floor(now / 1000);
+        if(decodedJWT.exp < nowInSeconds)
+            throw new HttpException('JWT expired', HttpStatus.BAD_REQUEST);
+    }
+    
+    getOrDecryptPayload(payload){
+        if(payload.secret){
+            let payloadStr = aesDecrypt(payload.secret)
+            return JSON.parse(payloadStr)
+        }
+        return payload
+    }
+
+    // ------------------------------------------------
     async validate(req) {
-        console.log(req.query.token)
-        return {
-            email: "mambo@gmail.com"
-        };
+
+        this.checkTokenExists(req)
+        let decodedJWT = this.checkJwtIsValid(req.query.token)
+        this.checkJwtIsNotExpired(decodedJWT)
+        const payload = this.getOrDecryptPayload(decodedJWT.payload)
+        
+        req.magicLinkValidatedPayload = payload
+        
+        return payload.user
     }
 }

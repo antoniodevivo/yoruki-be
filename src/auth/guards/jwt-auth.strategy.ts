@@ -14,7 +14,7 @@ export class JwtGuardStrategy extends PassportStrategy(Strategy) {
     }
 
     async validate(payload: any) {
-        const user = this.authService.validateUser(payload.email)
+        const user = this.authService.checkUserIsRegistered(payload.email)
         return user;
     }
 }

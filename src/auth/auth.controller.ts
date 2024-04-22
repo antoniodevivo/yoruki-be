@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpStatus, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { MagicLoginStrategy } from './guards/magiclogin.strategy';
 import { PasswordlessLoginDto } from '../dto/passwordless-login.dto';
@@ -12,11 +12,33 @@ export class AuthController {
     private authStrategy: MagicLoginStrategy
   ) { }
 
+  @Post("register")
+  register(@Req() req, @Res() res, @Body() body: PasswordlessLoginDto) {
+    this.authService.checkUserIsNotRegistered(body.email)
+    this.authStrategy.sendMagicLink(body.email, {
+      action: {
+        type: "register",
+        method: "email"
+      },
+      user: {
+        email: body.email
+      },
+      isSecret: true
+    });
+    return res.send({ success: true });
+  }
 
   @Post("login")
   login(@Req() req, @Res() res, @Body() body: PasswordlessLoginDto) {
-    this.authService.validateUser(body.destination)
-    this.authStrategy.sendMagicLink(body.destination, {});
+    const user = this.authService.checkUserIsRegistered(body.email)
+    this.authStrategy.sendMagicLink(body.email, {
+      action: {
+        type: "login",
+        method: "email"
+      },
+      user: user,
+      isSecret: true
+    });
     return res.send({ success: true });
   }
 
@@ -44,7 +66,30 @@ export class AuthController {
   @UseGuards(GoogleOauthGuard)
   async googleAuthCallback(@Req() req, @Res() res) {
     try {
-      const jwt = await this.authService.generateJWT(req.user);
+      const user = this.authService.retrieveUser(req.user.email)
+
+      if (!user) {
+
+        this.authStrategy.sendMagicLink(req.user.email, {
+          action: {
+            type: "register",
+            method: "google"
+          },
+          user: {
+            email: req.user.email
+          }
+        });
+
+        return res.status(HttpStatus.NOT_FOUND).json({
+          message: `User not found. Sent confirmation email to ${req.user.email}`,
+        });
+      }
+
+      const jwt = await this.authService.generateJWT({
+        payload: {
+          user: req.user
+        }
+      });
       res.cookie('YORUKI_JWT', jwt.access_token, {
         httpOnly: true,
         sameSite: 'strict',
