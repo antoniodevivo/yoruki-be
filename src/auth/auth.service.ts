@@ -30,18 +30,18 @@ export class AuthService {
     }
 
     generateJWT({
-        payload, 
-        expiresIn=process.env.JWT_EXPIRATION
+        payload,
+        expiresIn = process.env.JWT_EXPIRATION
     }) {
-        if(payload.isSecret)
+        if (payload.isSecret)
             payload = {
                 secret: aesEncrypt(JSON.stringify(payload))
             }
 
         return {
             access_token: this.jwtService.sign({
-                payload, 
-                options: {expiresIn: expiresIn}
+                payload,
+                options: { expiresIn: expiresIn }
             })
         }
     }
@@ -56,6 +56,24 @@ export class AuthService {
         }
 
         return [err, decodedJWT];
+    }
+
+    async setJwtCookie(req: any, res: any, extraPayload: any = null) {
+        let payload = {}
+
+        if (extraPayload)
+            payload = extraPayload
+
+        payload["user"] = req.user
+        
+        const jwt = await this.generateJWT({
+            payload
+        });
+        res.cookie('YORUKI_JWT', jwt.access_token, {
+            httpOnly: true,
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        });
     }
 
 }

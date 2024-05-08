@@ -61,6 +61,10 @@ export class MagicLoginStrategy extends PassportStrategy(Strategy, "magicLogin")
             let payloadStr = aesDecrypt(payload.secret)
             return JSON.parse(payloadStr)
         }
+
+        if(typeof payload != "object")
+            throw new HttpException('Invalid payload', HttpStatus.BAD_REQUEST);
+
         return payload
     }
 

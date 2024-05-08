@@ -46,16 +46,12 @@ export class AuthController {
   @Get("login/magic-link-interceptor")
   @UseGuards(MagicLoginGuard)
   async loginLinkInterceptor(@Req() req, @Res() res) {
-    console.log(req)
-    return res.send({ success: true });
+
+    // scrivere tutta la logica in authService per gestire le varie casistiche
     try {
-      const jwt = await this.authService.generateJWT(req.user);
-      res.cookie('YORUKI_JWT', jwt.access_token, {
-        httpOnly: true,
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000
-      });
-      res.redirect(`${process.env.FRONTEND_URL}/`);
+      const extraPayload = req.magicLinkValidatedPayload;
+      this.authService.setJwtCookie(req, res, extraPayload);
+      res.redirect(`${process.env.FRONTEND_URL}/login-interceptor`);
     } catch (err) {
       res.status(500).send({ success: false, message: err.message });
     }
@@ -85,17 +81,8 @@ export class AuthController {
         });
       }
 
-      const jwt = await this.authService.generateJWT({
-        payload: {
-          user: req.user
-        }
-      });
-      res.cookie('YORUKI_JWT', jwt.access_token, {
-        httpOnly: true,
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000
-      });
-      res.redirect(`${process.env.FRONTEND_URL}/`);
+      this.authService.setJwtCookie(req, res);
+      res.redirect(`${process.env.FRONTEND_URL}/login-interceptor`);
     } catch (err) {
       res.status(500).send({ success: false, message: err.message });
     }
