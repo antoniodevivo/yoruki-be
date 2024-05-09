@@ -51,7 +51,7 @@ export class AuthController {
     try {
       const extraPayload = req.magicLinkValidatedPayload;
       this.authService.setJwtCookie(req, res, extraPayload);
-      res.redirect(`${process.env.FRONTEND_URL}/login-interceptor`);
+      res.redirect(`${process.env.FRONTEND_URL}/success-login`);
     } catch (err) {
       res.status(500).send({ success: false, message: err.message });
     }
@@ -82,7 +82,7 @@ export class AuthController {
       }
 
       this.authService.setJwtCookie(req, res);
-      res.redirect(`${process.env.FRONTEND_URL}/login-interceptor`);
+      res.redirect(`${process.env.FRONTEND_URL}/success-login`);
     } catch (err) {
       res.status(500).send({ success: false, message: err.message });
     }
