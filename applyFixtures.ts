@@ -1,31 +1,72 @@
 import { DataSource } from "typeorm";
 import dbConfigs from "./ormconfig"
 
+//Fixtures Objects
+import SystemRolesFixtures from "./src/fixtures/system-roles"
+import UsersFixtures from "./src/fixtures/users"
+
+// Set array in order of releationship
+const fixtures = [SystemRolesFixtures, UsersFixtures]
+
 const AppDataSource = new DataSource(dbConfigs)
 
 AppDataSource.initialize()
   .then(async () => {
-    const userRepository = AppDataSource.getRepository(User);
+    let savedDbObjects = {}
 
-    // Inizia una transazione
+    for (const fixture of fixtures) {
+      savedDbObjects[fixture.Entity.name] = {}
+    }
+
+    // Start Transaction
     const queryRunner = AppDataSource.createQueryRunner();
     await queryRunner.startTransaction();
 
     try {
-      let user = new User();
-      user.name = "John";
-      user.email = "john@example.com";
+      var dbObject;
+      var fixtureObj;
 
-      // Salva l'utente all'interno della transazione
-      await queryRunner.manager.save(user);
+      for (const fixture of fixtures) {
+        // Init repo
+        const repository = AppDataSource.getRepository(fixture.Entity);
 
-      // Esegui il commit della transazione
+        for (const row of Object.keys(fixture.items)) {
+
+          // Init Object
+          dbObject = new fixture.Entity()
+
+          for (const column of Object.keys(fixture.items[row])) {
+            fixtureObj = fixture.items[row][column]
+
+            // Releationship objects
+            if (typeof fixtureObj === 'object') {
+              // Only ManyToOne for now
+              if (!Object.keys(savedDbObjects[fixtureObj.entityName]).includes(fixtureObj.itemName)) {
+                throw new Error(`Unable to find saved object for entity ${fixtureObj.entityName} with name ${fixtureObj.itemName}`)
+              }
+              dbObject[column] = savedDbObjects[fixtureObj.entityName][fixtureObj.itemName]
+            } else {
+              dbObject[column] = fixtureObj
+            }
+
+          }
+
+          // Save dbObject
+          await queryRunner.manager.save(dbObject);
+
+          savedDbObjects[fixture.Entity.name][row] = dbObject;
+
+        }
+
+
+      }
+
+      // Finally Commit
       await queryRunner.commitTransaction();
+
     } catch (error) {
-      // Se c'è un errore, esegui il rollback della transazione
       await queryRunner.rollbackTransaction();
     } finally {
-      // Rilascia il query runner
       await queryRunner.release();
     }
   })
